@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Decision App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .menu {
+            margin-bottom: 20px;
+        }
+        .menu button {
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        #chart {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="menu">
+    <button onclick="addLocation()">Tambah Lokasi</button>
+    <button onclick="updateLocation()">Perbarui Lokasi</button>
+    <button onclick="deleteLocation()">Hapus Lokasi</button>
+    <button onclick="showAllLocations()">Tampilkan Semua Lokasi</button>
+    <button onclick="showBestLocation()">Tampilkan Lokasi Terbaik</button>
+</div>
+
+<div id="chart"></div>
+<table id="locationTable"></table>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.3.0/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let criteriaNames, criteriaWeights, subCriteriaNames, subCriteriaWeights;
+    let locations = [];
+
+    function loadCSV(filePath) {
+        return new Promise((resolve, reject) => {
+            Papa.parse(filePath, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    resolve(results.data);
+                },
+                error: function(error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    async function loadCriteria() {
+        let criteriaData = await loadCSV('criteria_weights.csv');
+        let subCriteriaData = await loadCSV('sub_criteria_weights.csv');
+        
+        criteriaNames = criteriaData.map(row => row.Kriteria);
+        criteriaWeights = criteriaData.map(row => parseFloat(row.Bobot));
+        
+        subCriteriaNames = {};
+        subCriteriaWeights = {};
+        
+        subCriteriaData.forEach(row => {
+            if (!subCriteriaNames[row.Kriteria]) {
+                subCriteriaNames[row.Kriteria] = [];
+                subCriteriaWeights[row.Kriteria] = [];
+            }
+            subCriteriaNames[row.Kriteria].push(row['Sub-Kriteria']);
+            subCriteriaWeights[row.Kriteria].push(parseFloat(row.Bobot));
+        });
+    }
+
+    function addLocation() {
+        const location = {
+            ID: locations.length + 1,
+            Lokasi: `Lokasi ${locations.length + 1}`,
+            'Transportasi Umum': Math.floor(Math.random() * 8) + 1,
+            'Kemudahan Akses Jalan': Math.floor(Math.random() * 8) + 1,
+            'Kedekatan dengan Pusat Kota': Math.floor(Math.random() * 8) + 1,
+            'Biaya Tanah/Bangunan': Math.floor(Math.random() * 8) + 1,
+            'Biaya Operasional': Math.floor(Math.random() * 8) + 1,
+            'Biaya Perawatan': Math.floor(Math.random() * 8) + 1,
+            'Keamanan': Math.floor(Math.random() * 8) + 1,
+            'Kebersihan': Math.floor(Math.random() * 8) + 1,
+            'Kenyamanan': Math.floor(Math.random() * 8) + 1,
+            'Total Weight': 0
+        };
+        locations.push(location);
+        calculateTotalWeights();
+    }
+
+    function updateLocation() {
+        const locationID = prompt("Masukkan ID lokasi yang ingin diperbarui:");
+        const location = locations.find(loc => loc.ID == locationID);
+        if (location) {
+            const subCriteria = Object.keys(location).slice(2, -1);
+            let subChoice = prompt("Pilih subkriteria yang ingin diupdate:\n" + subCriteria.map((sub, index) => `${index + 1}. ${sub}`).join('\n'));
+            subChoice = parseInt(subChoice);
+            if (subChoice >= 1 && subChoice <= subCriteria.length) {
+                const newValue = parseInt(prompt(`Masukkan nilai baru untuk ${subCriteria[subChoice - 1]}:`));
+                if (!isNaN(newValue)) {
+                    location[subCriteria[subChoice - 1]] = newValue;
+                    calculateTotalWeights();
+                } else {
+                    alert("Nilai harus berupa angka.");
+                }
+            } else {
+                alert("Pilihan subkriteria tidak valid.");
+            }
+        } else {
+            alert("ID lokasi tidak ditemukan.");
+        }
+    }
+
+    function deleteLocation() {
+        const locationID = prompt("Masukkan ID lokasi yang ingin dihapus:");
+        locations = locations.filter(loc => loc.ID != locationID);
+        calculateTotalWeights();
+    }
+
+    function calculatePriority(matrix) {
+        const eig = math.eigs(matrix);
+        const maxEigval = eig.values[0];
+        const maxEigvec = math.subset(eig.vectors, math.index(math.range(0, eig.vectors.size()[0]), 0));
+        const priorities = math.divide(maxEigvec, math.sum(maxEigvec));
+        return priorities;
+    }
+
+    function calculateConsistencyRatio(matrix, priorities) {
+        const eig = math.eigs(matrix);
+        const maxEigval = eig.values[0];
+        const n = matrix.size()[0];
+        const CI = (maxEigval - n) / (n - 1);
+        const RI = [0, 0, 0.58, 0.90, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][n - 1];
+        const CR = CI / RI;
+        return CR;
+    }
+
+    function pairwiseComparisonMatrix(ranking) {
+        const n = ranking.length;
+        const matrix = math.ones([n, n]);
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (i !== j) {
+                    matrix.set([i, j], ranking[i] / ranking[j]);
+                }
+            }
+        }
+        return matrix;
+    }
+
+    function normalizeWeights(weights) {
+        const total = math.sum(weights);
+        return weights.map(w => w / total);
+    }
+
+    function weightedPriorities(values, weights, criteriaPriority) {
+        const weighted = math.sum(math.dotMultiply(values, weights));
+        return criteriaPriority * weighted;
+    }
+
+    function calculateTotalWeights() {
+        locations.forEach(location => {
+            let totalWeight = 0;
+            criteriaNames.forEach(criteria => {
+                const subCriteria = subCriteriaNames[criteria];
+                const subPriorities = calculatePriority(pairwiseComparisonMatrix(subCriteriaWeights[criteria]));
+                const values = subCriteria.map(sub => location[sub]);
+                totalWeight += weightedPriorities(values, subPriorities, criteriaWeights[criteriaNames.indexOf(criteria)]);
+            });
+            location['Total Weight'] = totalWeight.toFixed(4);
+        });
+        renderTable();
+    }
+
+    function renderTable() {
+        const table = document.getElementById('locationTable');
+        table.innerHTML = '';
+        const headerRow = document.createElement('tr');
+        const headers = Object.keys(locations[0]);
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header;
+            headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+
+        locations.forEach(location => {
+            const row = document.createElement('tr');
+            headers.forEach(header => {
+                const td = document.createElement('td');
+                td.textContent = location[header];
+                row.appendChild(td);
+            });
+            table.appendChild(row);
+        });
+    }
+
+    function showBestLocation() {
+        const bestLocation = locations.reduce((prev, curr) => (prev['Total Weight'] > curr['Total Weight']) ? prev : curr);
+        alert(`Lokasi terbaik:\n${JSON.stringify(bestLocation, null, 2)}`);
+    }
+
+    function showAllLocations() {
+        renderTable();
+    }
+
+    function plotTotalWeights() {
+        const ctx = document.getElementById('chart').getContext('2d');
+        const ids = locations.map(loc => loc.ID);
+        const totalWeights = locations.map(loc => parseFloat(loc['Total Weight']));
+        const colors = ids.map((id, index) => id === ids[totalWeights.indexOf(Math.max(...totalWeights))] ? 'red' : 'blue');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ids,
+                datasets: [{
+                    label: 'Total Weight per Lokasi',
+                    data: totalWeights,
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    async function init() {
+        await loadCriteria();
+        for (let i = 0; i < 100; i++) {
+            addLocation();
+        }
+        calculateTotalWeights();
+        plotTotalWeights();
+        showBestLocation();
+    }
+
+    init();
+</script>
+
+</body>
+</html>
