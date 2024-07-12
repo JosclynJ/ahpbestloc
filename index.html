@@ -5,40 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisis Lokasi dengan AHP</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
 </head>
 <body>
     <div class="container">
         <h1>Analisis Lokasi dengan AHP</h1>
         <div id="location-form">
-            <h2>Tambah Lokasi</h2>
+            <!-- <h2>Tambah Lokasi</h2> -->
             <form id="add-location-form">
                 <!-- Form fields for location attributes -->
-                <label for="transportasi-umum">Transportasi Umum:</label>
-                <input type="number" id="transportasi-umum" name="transportasi-umum" min="1" max="9">
+                <!-- <label for="transportasi-umum">Transportasi Umum:</label> -->
+                <input type="hidden" id="transportasi-umum" name="transportasi-umum" min="1" max="9">
                 
-                <label for="kemudahan-akses-jalan">Kemudahan Akses Jalan:</label>
-                <input type="number" id="kemudahan-akses-jalan" name="kemudahan-akses-jalan" min="1" max="9">
+                <!-- <label for="kemudahan-akses-jalan">Kemudahan Akses Jalan:</label> -->
+                <input type="hidden" id="kemudahan-akses-jalan" name="kemudahan-akses-jalan" min="1" max="9">
                 
-                <label for="kedekatan-dengan-pusat-kota">Kedekatan dengan Pusat Kota:</label>
-                <input type="number" id="kedekatan-dengan-pusat-kota" name="kedekatan-dengan-pusat-kota" min="1" max="9">
+                <!-- <label for="kedekatan-dengan-pusat-kota">Kedekatan dengan Pusat Kota:</label> -->
+                <input type="hidden" id="kedekatan-dengan-pusat-kota" name="kedekatan-dengan-pusat-kota" min="1" max="9">
                 
-                <label for="biaya-tanah">Biaya Tanah:</label>
-                <input type="number" id="biaya-tanah" name="biaya-tanah" min="1" max="9">
+                <!-- <label for="biaya-tanah">Biaya Tanah:</label> -->
+                <input type="hidden" id="biaya-tanah" name="biaya-tanah" min="1" max="9">
                 
-                <label for="biaya-operasional">Biaya Operasional:</label>
-                <input type="number" id="biaya-operasional" name="biaya-operasional" min="1" max="9">
+                <!-- <label for="biaya-operasional">Biaya Operasional:</label> -->
+                <input type="hidden" id="biaya-operasional" name="biaya-operasional" min="1" max="9">
                 
-                <label for="biaya-perawatan">Biaya Perawatan:</label>
-                <input type="number" id="biaya-perawatan" name="biaya-perawatan" min="1" max="9">
+                <!-- <label for="biaya-perawatan">Biaya Perawatan:</label> -->
+                <input type="hidden" id="biaya-perawatan" name="biaya-perawatan" min="1" max="9">
                 
-                <label for="keamanan">Keamanan:</label>
-                <input type="number" id="keamanan" name="keamanan" min="1" max="9">
+                <!-- <label for="keamanan">Keamanan:</label> -->
+                <input type="hidden" id="keamanan" name="keamanan" min="1" max="9">
                 
-                <label for="kebersihan">Kebersihan:</label>
-                <input type="number" id="kebersihan" name="kebersihan" min="1" max="9">
+                <!-- <label for="kebersihan">Kebersihan:</label> -->
+                <input type="hidden" id="kebersihan" name="kebersihan" min="1" max="9">
                 
-                <label for="kenyamanan">Kenyamanan:</label>
-                <input type="number" id="kenyamanan" name="kenyamanan" min="1" max="9">
+                <!-- <label for="kenyamanan">Kenyamanan:</label> -->
+                <input type="hidden" id="kenyamanan" name="kenyamanan" min="1" max="9">
 
                 <button type="submit">Tambah Lokasi</button>
             </form>
@@ -46,6 +49,26 @@
         <div id="results-container">
             <div id="results-output"></div>
         </div>
+        <canvas id="locationChart" width="400" height="200"></canvas>
+        <table id="locationsTable" class="display compact" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Lokasi</th>
+                    <th>Transportasi Umum</th>
+                    <th>Kemudahan Akses Jalan</th>
+                    <th>Kedekatan dengan Pusat Kota</th>
+                    <th>Biaya Tanah</th>
+                    <th>Biaya Operasional</th>
+                    <th>Biaya Perawatan</th>
+                    <th>Keamanan</th>
+                    <th>Kebersihan</th>
+                    <th>Kenyamanan</th>
+                    <th>Total Weight</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
         <div>
             <h2>Kriteria dan Bobotnya</h2>
             <table id="criteria-weights-table">
@@ -75,5 +98,6 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="js/script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
