@@ -241,6 +241,43 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             locationsTableBody.appendChild(row);
         });
+
+        const updateLocationForm = document.getElementById('update-location-form');
+
+updateLocationForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const locationId = parseInt(document.getElementById('location-id').value) - 1;
+    if (locationId < 0 || locationId >= locations.length) {
+        alert('ID lokasi tidak valid.');
+        return;
+    }
+
+    const updatedLocation = {
+        'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
+        'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
+        'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
+        'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
+        'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
+        'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
+        'keamanan': parseInt(document.getElementById('update-keamanan').value),
+        'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
+        'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value)
+    };
+
+    // Memperbarui lokasi
+    locations[locationId] = updatedLocation;
+
+    // Menghitung ulang total bobot dan memperbarui grafik
+    const totalWeights = locations.map(calculateTotalWeight);
+    const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+
+    displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+    displayChart(totalWeights, bestIndex);
+    populateDataTable(locations, totalWeights);
+});
+
+
     
         // Inisialisasi DataTable baru dengan pengaturan yang diperbarui
         $('#locationsTable').DataTable({
