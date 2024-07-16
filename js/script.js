@@ -4,13 +4,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let criteriaWeights = [];
     let subCriteriaWeights = {};
     let chartInstance;
-    let locations = [];
+    let locations = []; // Inisialisasi locations dengan array kosong
 
     const resultsOutput = document.getElementById('results-output');
     const criteriaWeightsTableBody = document.getElementById('criteria-weights-table').querySelector('tbody');
     const subCriteriaWeightsTableBody = document.getElementById('sub-criteria-weights-table').querySelector('tbody');
     const locationChartCtx = document.getElementById('locationChart').getContext('2d');
-    const locationsTableBody = document.getElementById('locationsTable').querySelector('tbody');
 
     function readCSV(filePath, callback) {
         Papa.parse(filePath, {
@@ -45,11 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayPairwiseMatrix(matrix, containerId, labels) {
         const container = document.getElementById(containerId);
         if (!container) {
-            console.error(`Container element '${containerId}' tidak ditemukan.`);
+            console.error(`Container element '${containerId}' not found.`);
             return;
         }
 
-        let tableHtml = '<table><thead><tr><th></th>';
+        let tableHtml = '<table class="table"><thead><tr><th></th>';
 
         for (let i = 0; i < labels.length; i++) {
             tableHtml += `<th>${labels[i]}</th>`;
@@ -96,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         for (let key in subCriteria) {
-            subCriteria[key] = subCriteria[key].filter((v, i, a) => a.indexOf(v) === i); // Menghapus duplikat sub-kriteria
-            const tbody = document.querySelector(`#sub-criteria-weights-table tbody`);
+            subCriteria[key] = subCriteria[key].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicate sub-criteria
+            const tbody = document.querySelector('#sub-criteria-weights-table tbody');
             if (tbody) {
                 subCriteria[key].forEach((subCriterion, index) => {
                     const row = document.createElement('tr');
@@ -105,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     tbody.appendChild(row);
                 });
             } else {
-                console.error(`Elemen tbody untuk sub-criteria-weights-table tidak ditemukan.`);
+                console.error(`tbody element for sub-criteria-weights-table not found.`);
             }
 
             subCriteriaWeights[key] = normalizeWeights(subCriteriaWeights[key]);
@@ -115,13 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const addLocationForm = document.getElementById('add-location-form');
+    const updateLocationModal = new bootstrap.Modal(document.getElementById('updateModal'));
 
     addLocationForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
+        // Contoh inisialisasi lokasi, gantilah dengan logika atau data sesuai kebutuhan Anda
         locations = [];
         for (let i = 0; i < 100; i++) {
             const newLocation = {
+                id: i + 1, // Menambahkan ID pada setiap lokasi baru
                 'transportasi-umum': getRandomInt(1, 9),
                 'kemudahan-akses-jalan': getRandomInt(1, 9),
                 'kedekatan-dengan-pusat-kota': getRandomInt(1, 9),
@@ -164,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!isNaN(value)) {
                     totalWeight += value * subCriteriaWeightsList[idx] * criteriaWeight;
                 } else {
-                    console.error(`Nilai '${subCriterion}' tidak valid.`);
+                    console.error(`Invalid value for '${subCriterion}'.`);
                 }
             });
         });
@@ -173,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayResults(location, totalWeight, locationIndex) {
-        let resultsHtml = `<h3>Hasil Analisis Lokasi Terbaik</h3><p>Lokasi Terbaik: Lokasi ${locationIndex}</p><ul>`;
+        let resultsHtml = `<h3>Hasil Analisis Lokasi Terbaik</h3><p>Lokasi Terbaik: Lokasi ${location.id}</p><ul>`;
 
         for (const [key, value] of Object.entries(location)) {
             resultsHtml += `<li style="text-transform: capitalize;">${key.replace(/-/g, ' ')}: ${value}</li>`;
@@ -194,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chartInstance = new Chart(locationChartCtx, {
             type: 'bar',
             data: {
-                labels: weights.map((_, index) => `Lokasi ${index + 1}`),
+                labels: locations.map(loc => `Lokasi ${loc.id}`), // Menggunakan ID lokasi yang sesuai
                 datasets: [{
                     label: 'Total Weight',
                     data: weights,
@@ -214,79 +216,119 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function populateDataTable(locations, weights) {
-        // Hancurkan DataTable sebelumnya jika ada
+        const dataTable = $('#locationsTable').DataTable();
+        
+        // Hancurkan DataTable jika sudah ada sebelumnya
         if ($.fn.DataTable.isDataTable('#locationsTable')) {
-            $('#locationsTable').DataTable().clear().destroy();
+            dataTable.clear();
         }
     
-        locationsTableBody.innerHTML = '';
-    
-        // Urutkan data sebelum memasukkan ke dalam tabel
-        locations.sort((a, b) => a.index - b.index);
-    
         locations.forEach((location, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>Lokasi ${index + 1}</td>
-                <td>${location['transportasi-umum']}</td>
-                <td>${location['kemudahan-akses-jalan']}</td>
-                <td>${location['kedekatan-dengan-pusat-kota']}</td>
-                <td>${location['biaya-tanah']}</td>
-                <td>${location['biaya-operasional']}</td>
-                <td>${location['biaya-perawatan']}</td>
-                <td>${location['keamanan']}</td>
-                <td>${location['kebersihan']}</td>
-                <td>${location['kenyamanan']}</td>
-                <td>${weights[index].toFixed(4)}</td>
-            `;
-            locationsTableBody.appendChild(row);
+            const row = [
+                location['id'],
+                `Lokasi ${location.id}`, // Menampilkan ID lokasi
+                location['transportasi-umum'],
+                location['kemudahan-akses-jalan'],
+                location['kedekatan-dengan-pusat-kota'],
+                location['biaya-tanah'],
+                location['biaya-operasional'],
+                location['biaya-perawatan'],
+                location['keamanan'],
+                location['kebersihan'],
+                location['kenyamanan'],
+                weights[index].toFixed(4),
+                `<button class="btn btn-primary btn-sm" onclick="openUpdateModal(${location.id})">Update</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteLocation(${location.id})">Delete</button>`
+            ];
+            dataTable.row.add(row).draw(false);
         });
-
-        const updateLocationForm = document.getElementById('update-location-form');
-
-updateLocationForm.addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const locationId = parseInt(document.getElementById('location-id').value) - 1;
-    if (locationId < 0 || locationId >= locations.length) {
-        alert('ID lokasi tidak valid.');
-        return;
     }
 
-    const updatedLocation = {
-        'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
-        'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
-        'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
-        'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
-        'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
-        'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
-        'keamanan': parseInt(document.getElementById('update-keamanan').value),
-        'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
-        'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value)
+    // Fungsi untuk membuka modal update lokasi
+    window.openUpdateModal = function(locationId) {
+        const location = locations.find(loc => loc.id === locationId);
+        if (location) {
+            // Mengisi nilai modal dengan data lokasi yang ada
+            document.getElementById('updateModalLabel').innerText = `Update Location ${location.id}`;
+            document.getElementById('update-transportasi-umum').value = location['transportasi-umum'];
+            document.getElementById('update-kemudahan-akses-jalan').value = location['kemudahan-akses-jalan'];
+            document.getElementById('update-kedekatan-dengan-pusat-kota').value = location['kedekatan-dengan-pusat-kota'];
+            document.getElementById('update-biaya-tanah').value = location['biaya-tanah'];
+            document.getElementById('update-biaya-operasional').value = location['biaya-operasional'];
+            document.getElementById('update-biaya-perawatan').value = location['biaya-perawatan'];
+            document.getElementById('update-keamanan').value = location['keamanan'];
+            document.getElementById('update-kebersihan').value = location['kebersihan'];
+            document.getElementById('update-kenyamanan').value = location['kenyamanan'];
+
+            // Membuka modal
+            updateLocationModal.show();
+
+            // Mengatur fungsi untuk menyimpan perubahan setelah modal ditutup
+            updateLocationModal._element.querySelector('form').onsubmit = function(event) {
+                event.preventDefault();
+                const updatedValues = {
+                    'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
+                    'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
+                    'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
+                    'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
+                    'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
+                    'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
+                    'keamanan': parseInt(document.getElementById('update-keamanan').value),
+                    'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
+                    'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value)
+                };
+
+                const { valid, errorMessage } = validateUpdatedValues(updatedValues);
+
+                if (valid) {
+                    // Memperbarui nilai lokasi berdasarkan ID
+                    location['transportasi-umum'] = updatedValues['transportasi-umum'];
+                    location['kemudahan-akses-jalan'] = updatedValues['kemudahan-akses-jalan'];
+                    location['kedekatan-dengan-pusat-kota'] = updatedValues['kedekatan-dengan-pusat-kota'];
+                    location['biaya-tanah'] = updatedValues['biaya-tanah'];
+                    location['biaya-operasional'] = updatedValues['biaya-operasional'];
+                    location['biaya-perawatan'] = updatedValues['biaya-perawatan'];
+                    location['keamanan'] = updatedValues['keamanan'];
+                    location['kebersihan'] = updatedValues['kebersihan'];
+                    location['kenyamanan'] = updatedValues['kenyamanan'];
+
+                    // Menutup modal
+                    updateLocationModal.hide();
+
+                    // Memperbarui tabel dan grafik
+                    const totalWeights = locations.map(calculateTotalWeight);
+                    const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+                    displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+                    displayChart(totalWeights, bestIndex);
+                    populateDataTable(locations, totalWeights);
+                } else {
+                    alert(errorMessage);
+                }
+            };
+        } else {
+            alert(`Location with ID ${locationId} not found.`);
+        }
     };
 
-    // Memperbarui lokasi
-    locations[locationId] = updatedLocation;
-
-    // Menghitung ulang total bobot dan memperbarui grafik
-    const totalWeights = locations.map(calculateTotalWeight);
-    const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-
-    displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
-    displayChart(totalWeights, bestIndex);
-    populateDataTable(locations, totalWeights);
-});
-
-
-    
-        // Inisialisasi DataTable baru dengan pengaturan yang diperbarui
-        $('#locationsTable').DataTable({
-            "scrollX": true,
-            "order": [[0, 'asc']],
-            "columnDefs": [{
-                "targets": 0,
-                "type": "natural"
-            }]
-        });
+    function validateUpdatedValues(updatedValues) {
+        const keys = ['transportasi-umum', 'kemudahan-akses-jalan', 'kedekatan-dengan-pusat-kota', 'biaya-tanah', 'biaya-operasional', 'biaya-perawatan', 'keamanan', 'kebersihan', 'kenyamanan'];
+        for (const key of keys) {
+            if (isNaN(updatedValues[key])) {
+                return { valid: false, errorMessage: `Invalid value for '${key.replace(/-/g, ' ')}'. Please enter a valid number.` };
+            }
+        }
+        return { valid: true };
     }
+
+    // Fungsi untuk menghapus lokasi berdasarkan ID
+    window.deleteLocation = function(locationId) {
+        locations = locations.filter(location => location.id !== locationId);
+        const totalWeights = locations.map(calculateTotalWeight);
+        const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+        
+        displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+        displayChart(totalWeights, bestIndex);
+        populateDataTable(locations, totalWeights);
+    };
+
 });
