@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             error: function(error) {
                 console.error('Error parsing CSV:', error);
+                // Show SweetAlert for error
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error loading CSV data',
+                    text: 'Please check the CSV file or console for more details.'
+                });
             }
         });
     }
@@ -82,6 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const criteriaMatrix = createPairwiseMatrix(criteria, criteriaWeights);
         displayPairwiseMatrix(criteriaMatrix, 'criteria-pairwise-matrix', criteria);
+        // Tambahkan SweetAlert untuk pesan error
+        if (data.length === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal memuat data CSV untuk bobot kriteria.',
+                text: 'File CSV kosong atau format tidak sesuai.',
+            });
+        }
     });
 
     readCSV('csv/sub_criteria_weights.csv', function(data) {
@@ -110,6 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
             subCriteriaWeights[key] = normalizeWeights(subCriteriaWeights[key]);
             const subCriteriaMatrix = createPairwiseMatrix(subCriteria[key], subCriteriaWeights[key]);
             displayPairwiseMatrix(subCriteriaMatrix, `sub-criteria-pairwise-matrix-${key.replace(/ /g, '-')}`, subCriteria[key]);
+        }
+        // Tambahkan SweetAlert untuk pesan error
+        if (Object.keys(subCriteria).length === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal memuat data CSV untuk bobot sub-kriteria.',
+                text: 'File CSV kosong atau format tidak sesuai.',
+            });
         }
     });
 
@@ -143,6 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
         displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
         displayChart(totalWeights, bestIndex);
         populateDataTable(locations, totalWeights);
+        // Tambahkan SweetAlert untuk pesan sukses
+        Swal.fire({
+            icon: 'success',
+            title: 'Lokasi berhasil ditambahkan!',
+            showConfirmButton: false,
+            timer: 1500
+        });
     });
 
     function getRandomInt(min, max) {
@@ -217,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateDataTable(locations, weights) {
         const dataTable = $('#locationsTable').DataTable();
-        
+    
         // Hancurkan DataTable jika sudah ada sebelumnya
         if ($.fn.DataTable.isDataTable('#locationsTable')) {
             dataTable.clear();
@@ -237,15 +266,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 location['kebersihan'],
                 location['kenyamanan'],
                 weights[index].toFixed(4),
-                `<button class="btn btn-primary btn-sm" onclick="openUpdateModal(${location.id})">Update</button>
+                `<button class="btn btn-primary btn-sm" onclick="openDetailModal(${location.id})">Detail</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteLocation(${location.id})">Delete</button>`
             ];
             dataTable.row.add(row).draw(false);
         });
     }
+    
 
     // Fungsi untuk membuka modal update lokasi
     window.openUpdateModal = function(locationId) {
+        $('#detailModal').modal('hide');
         const location = locations.find(loc => loc.id === locationId);
         if (location) {
             // Mengisi nilai modal dengan data lokasi yang ada
@@ -260,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('update-kebersihan').value = location['kebersihan'];
             document.getElementById('update-kenyamanan').value = location['kenyamanan'];
 
+            
             // Membuka modal
             updateLocationModal.show();
 
@@ -301,12 +333,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
                     displayChart(totalWeights, bestIndex);
                     populateDataTable(locations, totalWeights);
+                    // Tambahkan SweetAlert untuk pesan sukses
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Lokasi berhasil diperbarui!',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
                 } else {
-                    alert(errorMessage);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lokasi gagal diperbarui.',
+                        text: errorMessage,
+                    });
                 }
             };
         } else {
-            alert(`Location with ID ${locationId} not found.`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lokasi tidak ditemukan',
+                text: 'Lokasi dengan ID ${locationId} tidak ditemukan.',
+            });
         }
     };
 
@@ -314,21 +361,100 @@ document.addEventListener('DOMContentLoaded', () => {
         const keys = ['transportasi-umum', 'kemudahan-akses-jalan', 'kedekatan-dengan-pusat-kota', 'biaya-tanah', 'biaya-operasional', 'biaya-perawatan', 'keamanan', 'kebersihan', 'kenyamanan'];
         for (const key of keys) {
             if (isNaN(updatedValues[key])) {
-                return { valid: false, errorMessage: `Invalid value for '${key.replace(/-/g, ' ')}'. Please enter a valid number.` };
+            // Tambahkan SweetAlert untuk pesan error
+            Swal.fire({
+                icon: 'error',
+                title: 'Nilai yang dimasukkan tidak valid.',
+                text: errorMessage,
+            });
+
+            return { valid: false };
             }
         }
         return { valid: true };
+        
     }
 
-    // Fungsi untuk menghapus lokasi berdasarkan ID
+    // Function to open detail modal
+    window.openDetailModal = function(locationId) {
+        const location = locations.find(loc => loc.id === locationId);
+        if (location) {
+            const modalBody = document.getElementById('detailModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = ''; // Clear previous content
+                
+                // Create table rows for location details
+                const fields = [
+                    { label: 'ID', value: location.id },
+                    { label: 'Nama', value: `Lokasi ${location.id}` },
+                    { label: 'Transportasi Umum', value: location['transportasi-umum'] },
+                    { label: 'Akses Jalan', value: location['kemudahan-akses-jalan'] },
+                    { label: 'Kedekatan Pusat Kota', value: location['kedekatan-dengan-pusat-kota'] },
+                    { label: 'Biaya Tanah', value: location['biaya-tanah'] },
+                    { label: 'Biaya Operasional', value: location['biaya-operasional'] },
+                    { label: 'Biaya Perawatan', value: location['biaya-perawatan'] },
+                    { label: 'Keamanan', value: location['keamanan'] },
+                    { label: 'Kebersihan', value: location['kebersihan'] },
+                    { label: 'Kenyamanan', value: location['kenyamanan'] },
+                    { label: 'Total', value: calculateTotalWeight(location).toFixed(4) }
+                ];
+
+                fields.forEach(field => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <th>${field.label}</th>
+                        <td>${field.value}</td>
+                    `;
+                    modalBody.appendChild(row);
+                });
+
+                // Menetapkan fungsi untuk tombol "Update" di dalam modal
+                const updateButton = document.getElementById('updateLocationButton');
+                updateButton.onclick = function() {
+                    // Memanggil fungsi untuk membuka modal update dengan ID lokasi yang sesuai
+                    updateLocationModal.show();
+                    openUpdateModal(locationId);
+                };
+
+                // Show the detail modal
+                $('#detailModal').modal('show');
+            } else {
+                console.error(`Modal body element 'detailModalBody' not found.`);
+            }
+        } else {
+            alert(`Location with ID ${locationId} not found.`);
+        }
+    };
+
+
     window.deleteLocation = function(locationId) {
+        const initialLength = locations.length;
+
         locations = locations.filter(location => location.id !== locationId);
+        if (locations.length === initialLength) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal menghapus lokasi.',
+                text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
+            });
+            return;
+        }
+
         const totalWeights = locations.map(calculateTotalWeight);
         const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-        
+
+        // Tambahkan SweetAlert untuk pesan sukses
+        Swal.fire({
+            icon: 'success',
+            title: 'Lokasi berhasil dihapus!',
+            showConfirmButton: false,
+            timer: 1500
+        });
+
         displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
         displayChart(totalWeights, bestIndex);
         populateDataTable(locations, totalWeights);
     };
+
 
 });

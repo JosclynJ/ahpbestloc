@@ -73,6 +73,7 @@
             <tbody></tbody>
         </table>
         
+        
         <div>
             <h2>Kriteria dan Bobotnya</h2>
             <table id="criteria-weights-table">
@@ -99,60 +100,92 @@
                 <tbody></tbody>
             </table>
         </div>
-        <!-- Modal for Update Location -->
-    <div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="updateModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="updateModalLabel">Update Location</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="update-location-form">
-                        <div class="form-group">
-                            <label for="update-transportasi-umum">Transportasi Umum</label>
-                            <input type="number" class="form-control" id="update-transportasi-umum">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-kemudahan-akses-jalan">Kemudahan Akses Jalan</label>
-                            <input type="number" class="form-control" id="update-kemudahan-akses-jalan">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-kedekatan-dengan-pusat-kota">Kedekatan dengan Pusat Kota</label>
-                            <input type="number" class="form-control" id="update-kedekatan-dengan-pusat-kota">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-biaya-tanah">Biaya Tanah</label>
-                            <input type="number" class="form-control" id="update-biaya-tanah">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-biaya-operasional">Biaya Operasional</label>
-                            <input type="number" class="form-control" id="update-biaya-operasional">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-biaya-perawatan">Biaya Perawatan</label>
-                            <input type="number" class="form-control" id="update-biaya-perawatan">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-keamanan">Keamanan</label>
-                            <input type="number" class="form-control" id="update-keamanan">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-kebersihan">Kebersihan</label>
-                            <input type="number" class="form-control" id="update-kebersihan">
-                        </div>
-                        <div class="form-group">
-                            <label for="update-kenyamanan">Kenyamanan</label>
-                            <input type="number" class="form-control" id="update-kenyamanan">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Update</button>
-                    </form>
+        <!-- Modal Detail Lokasi -->
+        <div class="modal fade" id="detailModal" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="detailModalLabel">Detail Location</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="detailModalBody">
+                        <!-- Konten detail lokasi akan diisi secara dinamis -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="updateLocationButton">Update</button>
+                    </div>
                 </div>
             </div>
         </div>
+        <!-- Modal Update Location -->
+<div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateModalLabel">Update Location</h5>
+            </div>
+            <form id="updateLocationForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Left Column -->
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="update-transportasi-umum" class="form-label">Transportasi Umum</label>
+                                <input type="number" class="form-control" id="update-transportasi-umum" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-kemudahan-akses-jalan" class="form-label">Kemudahan Akses Jalan</label>
+                                <input type="number" class="form-control" id="update-kemudahan-akses-jalan" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-kedekatan-dengan-pusat-kota" class="form-label">Kedekatan dengan Pusat Kota</label>
+                                <input type="number" class="form-control" id="update-kedekatan-dengan-pusat-kota" required>
+                            </div>
+                        </div>
+                        <!-- Middle Column -->
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="update-biaya-tanah" class="form-label">Biaya Tanah</label>
+                                <input type="number" class="form-control" id="update-biaya-tanah" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-biaya-operasional" class="form-label">Biaya Operasional</label>
+                                <input type="number" class="form-control" id="update-biaya-operasional" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-biaya-perawatan" class="form-label">Biaya Perawatan</label>
+                                <input type="number" class="form-control" id="update-biaya-perawatan" required>
+                            </div>
+                        </div>
+                        <!-- Right Column -->
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="update-keamanan" class="form-label">Keamanan</label>
+                                <input type="number" class="form-control" id="update-keamanan" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-kebersihan" class="form-label">Kebersihan</label>
+                                <input type="number" class="form-control" id="update-kebersihan" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update-kenyamanan" class="form-label">Kenyamanan</label>
+                                <input type="number" class="form-control" id="update-kenyamanan" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Location</button>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
+
 
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -166,5 +199,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom JS -->
     <script src="js/script.js"></script>
+    <!-- Sweet Alert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+
 </body>
 </html>
