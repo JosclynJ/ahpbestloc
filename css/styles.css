@@ -65,7 +65,3 @@ button {
 button:hover {
     background-color: #45a049;
 }
-
-#locationsTable {
-    font-size: 12px; /* Sesuaikan ukuran font sesuai kebutuhan */
-}
