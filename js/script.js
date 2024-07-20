@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
 
     function normalizeWeights(weights) {
         const total = weights.reduce((acc, val) => acc + parseFloat(val), 0);
@@ -133,6 +134,70 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    const inputCsv = document.getElementById('input-csv');
+    inputCsv.addEventListener('change', handleFileSelect);
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csvData = event.target.result;
+                processCSV(csvData);
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    function processCSV(csvData) {
+        Papa.parse(csvData, {
+            header: true,
+            complete: function(results) {
+                const data = results.data;
+
+                // Update locations array
+                locations = data.map((row) => ({
+                    'id': parseInt(row['ID']),
+                    'transportasi-umum': parseInt(row['Transportasi Umum']),
+                    'kemudahan-akses-jalan': parseInt(row['Kemudahan Akses Jalan']),
+                    'kedekatan-dengan-pusat-kota': parseInt(row['Kedekatan dengan Pusat Kota']),
+                    'biaya-tanah': parseInt(row['Biaya Tanah']),
+                    'biaya-operasional': parseInt(row['Biaya Operasional']),
+                    'biaya-perawatan': parseInt(row['Biaya Perawatan']),
+                    'keamanan': parseInt(row['Keamanan']),
+                    'kebersihan': parseInt(row['Kebersihan']),
+                    'kenyamanan': parseInt(row['Kenyamanan'])
+                }));
+
+                // Calculate total weights
+                const totalWeights = locations.map(calculateTotalWeight);
+                const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+
+                // Display results and chart
+                displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+                displayChart(totalWeights, bestIndex);
+
+                // Populate data table
+                populateDataTable(locations, totalWeights);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Data berhasil dimuat!',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            },
+            error: function(error) {
+                console.error('Error parsing CSV:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error loading CSV data',
+                    text: 'Please check the CSV file or console for more details.'
+                });
+            }
+        });
+    };
 
     const addLocationForm = document.getElementById('add-location-form');
 

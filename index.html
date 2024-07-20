@@ -14,6 +14,9 @@
 <body>
     <div class="container">
         <h1>Analisis Lokasi dengan AHP</h1>
+        <input type="file" id="input-csv" /><br><br>
+
+
         <div id="location-form">
             <!-- <h2>Tambah Lokasi</h2> -->
             <form id="add-location-form">
@@ -26,10 +29,8 @@
                 <input type="hidden" id="keamanan" name="keamanan" min="1" max="9">
                 <input type="hidden" id="kebersihan" name="kebersihan" min="1" max="9">
                 <input type="hidden" id="kenyamanan" name="kenyamanan" min="1" max="9">
-                <button type="submit">Tambah Lokasi</button>
+                <button class="btn btn-success" type="submit">Tambah Lokasi</button><br><br>
             </form>
-            <input type="file" id="csvFileInput" accept=".csv">
-            <button class="btn btn-primary" id="importCsvButton">Import CSV</button>
 
         </div>
         <div id="results-container">
