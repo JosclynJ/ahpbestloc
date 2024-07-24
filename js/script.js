@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let subCriteriaWeights = {};
     let chartInstance;
     let locations = []; // Inisialisasi locations dengan array kosong
+    // let currentCSVPath;
+
 
     const resultsOutput = document.getElementById('results-output');
     const criteriaWeightsTableBody = document.getElementById('criteria-weights-table').querySelector('tbody');
@@ -134,13 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-
     const inputCsv = document.getElementById('input-csv');
     inputCsv.addEventListener('change', handleFileSelect);
-
+    
+    let currentCSVFile = null;
+    
     function handleFileSelect(event) {
         const file = event.target.files[0];
         if (file) {
+            currentCSVFile = file;
             const reader = new FileReader();
             reader.onload = function(event) {
                 const csvData = event.target.result;
@@ -149,15 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsText(file);
         }
     }
-
+    
     function processCSV(csvData) {
         Papa.parse(csvData, {
             header: true,
             complete: function(results) {
                 const data = results.data;
-
-                // Update locations array
-                locations = data.map((row) => ({
+    
+                // Convert CSV data to locations array
+                const newLocations = data.map((row) => ({
                     'id': parseInt(row['ID']),
                     'transportasi-umum': parseInt(row['Transportasi Umum']),
                     'kemudahan-akses-jalan': parseInt(row['Kemudahan Akses Jalan']),
@@ -169,24 +173,49 @@ document.addEventListener('DOMContentLoaded', () => {
                     'kebersihan': parseInt(row['Kebersihan']),
                     'kenyamanan': parseInt(row['Kenyamanan'])
                 }));
-
+    
+                // Remove duplicates and get notifications
+                const [uniqueLocations, duplicates] = removeDuplicates(newLocations);
+    
+                // Notify about duplicates
+                if (duplicates.length > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Data duplikat ditemukan!',
+                        text: `Data berikut dihapus karena duplikasi: ${duplicates.map(loc => `ID ${loc.id}`).join(', ')}`,
+                        showConfirmButton: true
+                    }).then(() => {
+                        // Notify about successful data load after duplicate warning
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Data berhasil dimuat!',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    });
+                } else {
+                    // If no duplicates, just show success message
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Data berhasil dimuat!',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+    
+                // Update locations array with unique data
+                locations = uniqueLocations;
+    
                 // Calculate total weights
                 const totalWeights = locations.map(calculateTotalWeight);
                 const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-
+    
                 // Display results and chart
                 displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
                 displayChart(totalWeights, bestIndex);
-
+    
                 // Populate data table
                 populateDataTable(locations, totalWeights);
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Data berhasil dimuat!',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
             },
             error: function(error) {
                 console.error('Error parsing CSV:', error);
@@ -197,8 +226,142 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
-    };
+    }
+    
+    function saveCSV(event) {
+        event.preventDefault(); // Prevent default form behavior if applicable
+    
+        if (!currentCSVFile) {
+            console.error('No CSV file selected.');
+            return;
+        }
+    
+        // Calculate total weights
+        const totalWeights = locations.map(calculateTotalWeight);
+    
+        // Add total weight to each location
+        const csvData = locations.map((loc, index) => [
+            loc.id,
+            loc['transportasi-umum'],
+            loc['kemudahan-akses-jalan'],
+            loc['kedekatan-dengan-pusat-kota'],
+            loc['biaya-tanah'],
+            loc['biaya-operasional'],
+            loc['biaya-perawatan'],
+            loc['keamanan'],
+            loc['kebersihan'],
+            loc['kenyamanan'],
+            totalWeights[index].toFixed(4) // Total weight with 4 decimal places
+        ]).map(row => row.join(',')).join('\n');
+        
+        // Add headers
+        const csvContent = `ID,Transportasi Umum,Kemudahan Akses Jalan,Kedekatan dengan Pusat Kota,Biaya Tanah,Biaya Operasional,Biaya Perawatan,Keamanan,Kebersihan,Kenyamanan,Total Weight\n${csvData}`;
+    
+        // Create a FormData object to handle file uploads
+        const formData = new FormData();
+        formData.append('file', new Blob([csvContent], { type: 'text/csv' }), currentCSVFile.name);
+    
+        // Send data to the server
+        fetch('http://127.0.0.1:5000/upload-csv', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(`Sukses mengupload: ${data.filename}`)
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error uploading file',
+                text: 'Please try again or check the console for more details.'
+            });
+        });
+    }
+    
+    document.getElementById('saveCsvBtn').addEventListener('click', saveCSV);
 
+    function removeDuplicates(newLocations) {
+        const uniqueLocations = [];
+        const duplicates = [];
+    
+        newLocations.forEach(newLoc => {
+            if (isDuplicate(newLoc, uniqueLocations)) {
+                duplicates.push(newLoc);
+            } else {
+                uniqueLocations.push(newLoc);
+            }
+        });
+    
+        return [uniqueLocations, duplicates];
+    }
+    
+    function isDuplicate(newLocation, locations) {
+        return locations.some(location =>
+            location['transportasi-umum'] === newLocation['transportasi-umum'] &&
+            location['kemudahan-akses-jalan'] === newLocation['kemudahan-akses-jalan'] &&
+            location['kedekatan-dengan-pusat-kota'] === newLocation['kedekatan-dengan-pusat-kota'] &&
+            location['biaya-tanah'] === newLocation['biaya-tanah'] &&
+            location['biaya-operasional'] === newLocation['biaya-operasional'] &&
+            location['biaya-perawatan'] === newLocation['biaya-perawatan'] &&
+            location['keamanan'] === newLocation['keamanan'] &&
+            location['kebersihan'] === newLocation['kebersihan'] &&
+            location['kenyamanan'] === newLocation['kenyamanan']
+        );
+    }
+
+    function getLastId(locations) {
+        if (locations.length === 0) return 0;
+        return Math.max(...locations.map(loc => loc.id));
+    }
+    
+    const newLocationForm = document.getElementById('new-location-form');
+    
+    newLocationForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+    
+        const newLocation = {
+            id: getLastId(locations) + 1, // Assign new ID based on last ID
+            'transportasi-umum': parseInt(document.getElementById('new-transportasi-umum').value),
+            'kemudahan-akses-jalan': parseInt(document.getElementById('new-kemudahan-akses-jalan').value),
+            'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('new-kedekatan-dengan-pusat-kota').value),
+            'biaya-tanah': parseInt(document.getElementById('new-biaya-tanah').value),
+            'biaya-operasional': parseInt(document.getElementById('new-biaya-operasional').value),
+            'biaya-perawatan': parseInt(document.getElementById('new-biaya-perawatan').value),
+            'keamanan': parseInt(document.getElementById('new-keamanan').value),
+            'kebersihan': parseInt(document.getElementById('new-kebersihan').value),
+            'kenyamanan': parseInt(document.getElementById('new-kenyamanan').value)
+        };
+    
+        if (isDuplicate(newLocation, locations)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal menambahkan lokasi',
+                text: 'Lokasi ini sudah ada di daftar.',
+                showConfirmButton: true
+            });
+            return;
+        }
+    
+        locations.push(newLocation);
+    
+        const totalWeights = locations.map(calculateTotalWeight);
+        const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+        
+        displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+        displayChart(totalWeights, bestIndex);
+        populateDataTable(locations, totalWeights);
+    
+        Swal.fire({
+            icon: 'success',
+            title: 'Lokasi baru berhasil ditambahkan!',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    });
+    
+    
     const addLocationForm = document.getElementById('add-location-form');
 
     addLocationForm.addEventListener('submit', function(event) {
@@ -346,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 location['kebersihan'],
                 location['kenyamanan'],
                 weights[index].toFixed(4),
-                `<button class="btn btn-primary btn-sm" onclick="openDetailModal(${location.id})">Detail</button>
+                `<button class="btn btn-info btn-sm" onclick="openDetailModal(${location.id})">Detail</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteLocation(${location.id})">Delete</button>`
             ];
             dataTable.row.add(row).draw(false);
@@ -542,9 +705,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    document.getElementById('saveCsvBtn').addEventListener('click', saveCsv);
+    document.getElementById('saveCsvBtn2').addEventListener('click', saveCsv2);
 
-    function saveCsv() {
+    function saveCsv2() {
         if (locations.length === 0) {
             Swal.fire({
                 icon: 'error',
@@ -554,60 +717,50 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        Swal.fire({
-            title: 'Masukkan nama file',
-            input: 'text',
-            inputLabel: 'Nama file',
-            inputPlaceholder: 'locations.csv',
-            showCancelButton: true,
-            confirmButtonText: 'Simpan',
-            cancelButtonText: 'Batal',
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'Nama file tidak boleh kosong!';
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const fileName = result.value.endsWith('.csv') ? result.value : `${result.value}.csv`;
+        const headers = [
+            'ID', 'Transportasi Umum', 'Kemudahan Akses Jalan', 'Kedekatan dengan Pusat Kota',
+            'Biaya Tanah', 'Biaya Operasional', 'Biaya Perawatan', 'Keamanan', 'Kebersihan', 'Kenyamanan', 'Total Weight'
+        ];
 
-                const headers = [
-                    'ID', 'Transportasi Umum', 'Kemudahan Akses Jalan', 'Kedekatan dengan Pusat Kota',
-                    'Biaya Tanah', 'Biaya Operasional', 'Biaya Perawatan', 'Keamanan', 'Kebersihan', 'Kenyamanan', 'Total Weight'
-                ];
+        const rows = locations.map(location => [
+            location.id,
+            location['transportasi-umum'],
+            location['kemudahan-akses-jalan'],
+            location['kedekatan-dengan-pusat-kota'],
+            location['biaya-tanah'],
+            location['biaya-operasional'],
+            location['biaya-perawatan'],
+            location['keamanan'],
+            location['kebersihan'],
+            location['kenyamanan'],
+            calculateTotalWeight(location).toFixed(4)
+        ]);
 
-                const rows = locations.map(location => [
-                    location.id,
-                    location['transportasi-umum'],
-                    location['kemudahan-akses-jalan'],
-                    location['kedekatan-dengan-pusat-kota'],
-                    location['biaya-tanah'],
-                    location['biaya-operasional'],
-                    location['biaya-perawatan'],
-                    location['keamanan'],
-                    location['kebersihan'],
-                    location['kenyamanan'],
-                    calculateTotalWeight(location).toFixed(4)
-                ]);
+        // Use a library like PapaParse to handle CSV generation
+        const csvData = Papa.unparse([headers, ...rows], {
+            delimiter: ',',
+            newline: '\r\n'
+        });
 
-                // Use a library like PapaParse to handle CSV generation
-                const csvData = [headers, ...rows];
-                const csv = Papa.unparse(csvData, {
-                    delimiter: ',',
-                    newline: '\r\n'
-                });
-
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-
-                link.setAttribute('href', url);
-                link.setAttribute('download', fileName);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
+        // Send the CSV data to the server
+        fetch('http://127.0.0.1:5000/save-csv', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ csvData })
+        })
+        .then(response => response.text())
+        .then(result => {
+            alert(result)
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal menyimpan data CSV. Silakan coba lagi.'
+            });
+            console.error('Error saving CSV:', error);
         });
     }
 });

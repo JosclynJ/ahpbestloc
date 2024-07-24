@@ -6,17 +6,20 @@
     <title>AHP | Analisis Lokasi</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Sweet Alert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <!-- PapaParse JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
+
 </head>
 <body>
     <div class="container">
         <h1>Analisis Lokasi dengan AHP</h1>
         <input type="file" id="input-csv" /><br><br>
-
-
         <div id="location-form">
             <!-- <h2>Tambah Lokasi</h2> -->
             <form id="add-location-form">
@@ -29,19 +32,44 @@
                 <input type="hidden" id="keamanan" name="keamanan" min="1" max="9">
                 <input type="hidden" id="kebersihan" name="kebersihan" min="1" max="9">
                 <input type="hidden" id="kenyamanan" name="kenyamanan" min="1" max="9">
-                <button class="btn btn-success" type="submit">Tambah Lokasi</button><br><br>
+                <button class="btn btn-primary" type="submit">Tambah Lokasi Acak</button><br><br>
             </form>
-
         </div>
+
+        <form id="new-location-form">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="number" id="new-transportasi-umum" placeholder="Transportasi Umum" min="1" max="9" required>
+                    <input type="number" id="new-kemudahan-akses-jalan" placeholder="Kemudahan Akses Jalan" min="1" max="9"  required>
+                    <input type="number" id="new-kedekatan-dengan-pusat-kota" placeholder="Kedekatan dengan Pusat Kota" min="1" max="9" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" id="new-biaya-tanah" placeholder="Biaya Tanah" min="1" max="9" required>
+                    <input type="number" id="new-biaya-operasional" placeholder="Biaya Operasional" min="1" max="9" required>
+                    <input type="number" id="new-biaya-perawatan" placeholder="Biaya Perawatan" min="1" max="9" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" id="new-keamanan" placeholder="Keamanan" min="1" max="9" required>
+                    <input type="number" id="new-kebersihan" placeholder="Kebersihan" min="1" max="9" required>
+                    <input type="number" id="new-kenyamanan" placeholder="Kenyamanan" min="1" max="9" required><br>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Tambahkan Lokasi Baru</button><br><br>
+        </form>
+        
         <div id="results-container">
             <div id="results-output"></div>
         </div>
-        <canvas id="locationChart" width="400" height="200"></canvas>
+
+        <canvas id="locationChart"></canvas>
+
         <table id="locationsTable" class="display compact" style="width:100%">
             <tbody></tbody>
         </table>
-        <button id="saveCsvBtn" class="btn btn-primary">Simpan sebagai CSV</button>
-        
+
+        <button type="button" id="saveCsvBtn2" class="btn btn-primary">Simpan CSV</button>
+        <button type="button" id="saveCsvBtn" class="btn btn-danger">Simpan CSV</button>
+
         <div>
             <h2>Kriteria dan Bobotnya</h2>
             <table id="criteria-weights-table">
@@ -54,6 +82,7 @@
             <div id="sub-criteria-pairwise-matrix-Biaya"></div>
             <div id="sub-criteria-pairwise-matrix-Lingkungan"></div>
         </div>
+
         <div>
             <h2>Sub-Kriteria dan Bobotnya</h2>
             <table id="sub-criteria-weights-table">
@@ -88,83 +117,80 @@
             </div>
         </div>
         <!-- Modal Update Location -->
-<div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateModalLabel">Update Location</h5>
-            </div>
-            <form id="updateLocationForm">
-                <div class="modal-body">
-                    <div class="row">
-                        <!-- Left Column -->
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="update-transportasi-umum" class="form-label">Transportasi Umum</label>
-                                <input type="number" class="form-control" id="update-transportasi-umum" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-kemudahan-akses-jalan" class="form-label">Kemudahan Akses Jalan</label>
-                                <input type="number" class="form-control" id="update-kemudahan-akses-jalan" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-kedekatan-dengan-pusat-kota" class="form-label">Kedekatan dengan Pusat Kota</label>
-                                <input type="number" class="form-control" id="update-kedekatan-dengan-pusat-kota" required>
-                            </div>
-                        </div>
-                        <!-- Middle Column -->
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="update-biaya-tanah" class="form-label">Biaya Tanah</label>
-                                <input type="number" class="form-control" id="update-biaya-tanah" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-biaya-operasional" class="form-label">Biaya Operasional</label>
-                                <input type="number" class="form-control" id="update-biaya-operasional" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-biaya-perawatan" class="form-label">Biaya Perawatan</label>
-                                <input type="number" class="form-control" id="update-biaya-perawatan" required>
-                            </div>
-                        </div>
-                        <!-- Right Column -->
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="update-keamanan" class="form-label">Keamanan</label>
-                                <input type="number" class="form-control" id="update-keamanan" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-kebersihan" class="form-label">Kebersihan</label>
-                                <input type="number" class="form-control" id="update-kebersihan" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update-kenyamanan" class="form-label">Kenyamanan</label>
-                                <input type="number" class="form-control" id="update-kenyamanan" required>
-                            </div>
-                        </div>
+        <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="updateModalLabel">Update Location</h5>
                     </div>
+                    <form id="updateLocationForm">
+                        <div class="modal-body">
+                            <div class="row">
+                                <!-- Left Column -->
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="update-transportasi-umum" class="form-label">Transportasi Umum</label>
+                                        <input type="number" class="form-control" id="update-transportasi-umum" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-kemudahan-akses-jalan" class="form-label">Kemudahan Akses Jalan</label>
+                                        <input type="number" class="form-control" id="update-kemudahan-akses-jalan" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-kedekatan-dengan-pusat-kota" class="form-label">Kedekatan dengan Pusat Kota</label>
+                                        <input type="number" class="form-control" id="update-kedekatan-dengan-pusat-kota" required>
+                                    </div>
+                                </div>
+                                <!-- Middle Column -->
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="update-biaya-tanah" class="form-label">Biaya Tanah</label>
+                                        <input type="number" class="form-control" id="update-biaya-tanah" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-biaya-operasional" class="form-label">Biaya Operasional</label>
+                                        <input type="number" class="form-control" id="update-biaya-operasional" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-biaya-perawatan" class="form-label">Biaya Perawatan</label>
+                                        <input type="number" class="form-control" id="update-biaya-perawatan" required>
+                                    </div>
+                                </div>
+                                <!-- Right Column -->
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="update-keamanan" class="form-label">Keamanan</label>
+                                        <input type="number" class="form-control" id="update-keamanan" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-kebersihan" class="form-label">Kebersihan</label>
+                                        <input type="number" class="form-control" id="update-kebersihan" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="update-kenyamanan" class="form-label">Kenyamanan</label>
+                                        <input type="number" class="form-control" id="update-kenyamanan" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Update Location</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Update Location</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
-</div>
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap JS -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
-    <!-- PapaParse JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom JS -->
     <script src="js/script.js"></script>
-    <!-- Sweet Alert -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    
 </body>
 </html>
