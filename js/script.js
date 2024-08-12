@@ -4,35 +4,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let criteriaWeights = [];
     let subCriteriaWeights = {};
     let chartInstance;
-    let locations = []; // Inisialisasi locations dengan array kosong
-    // let currentCSVPath;
+    let locations = []; 
 
 
     const resultsOutput = document.getElementById('results-output');
-    const criteriaWeightsTableBody = document.getElementById('criteria-weights-table').querySelector('tbody');
-    const subCriteriaWeightsTableBody = document.getElementById('sub-criteria-weights-table').querySelector('tbody');
     const locationChartCtx = document.getElementById('locationChart').getContext('2d');
     const updateLocationModal = new bootstrap.Modal(document.getElementById('updateModal'));
-    const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
-
-    function readCSV(filePath, callback) {
-        Papa.parse(filePath, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                callback(results.data);
-            },
-            error: function(error) {
-                console.error('Error parsing CSV:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error loading CSV data',
-                    text: 'Please check the CSV file or console for more details.'
-                });
-            }
-        });
-    }
-    
 
     function normalizeWeights(weights) {
         const total = weights.reduce((acc, val) => acc + parseFloat(val), 0);
@@ -57,9 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(`Container element '${containerId}' not found.`);
             return;
         }
-
         let tableHtml = '<table class="table"><thead><tr><th></th>';
-
         for (let i = 0; i < labels.length; i++) {
             tableHtml += `<th>${labels[i]}</th>`;
         }
@@ -77,65 +52,165 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = tableHtml;
     }
 
-    readCSV('csv/criteria_weights.csv', function(data) {
-        criteria = data.map(row => row.Kriteria);
-        criteriaWeights = data.map(row => parseFloat(row.Bobot));
+    // Fungsi untuk memuat data kriteria
+    function loadKriteria() {
+        fetch('http://127.0.0.1:5000/kriteria')
+            .then(response => response.json())
+            .then(data => {
+                criteria = data.map(row => row.kriteria);
+                criteriaWeights = data.map(row => parseFloat(row.bobot));
+                console.log('Kriteria data:', data);
+
+                console.log('Loaded Criteria:', criteria);
+                console.log('Loaded Criteria Weights:', criteriaWeights);
+
+                const criteriaWeightsTableBody = document.querySelector('#criteria-weights-table tbody');
+                if (criteriaWeightsTableBody) {
+                    criteria.forEach((criterion, index) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${criterion}</td><td>${criteriaWeights[index]}</td>`;
+                        criteriaWeightsTableBody.appendChild(row);
+                    });
+                } else {
+                    console.error(`tbody element for criteria-weights-table not found.`);
+                }
+
+                // Normalisasi bobot kriteria
+                const normalizedCriteriaWeights = normalizeWeights(criteriaWeights);
+                console.log('Normalized Criteria Weights:', normalizedCriteriaWeights);
+
+                // Buat matriks pairwise
+                const criteriaMatrix = createPairwiseMatrix(criteria, normalizedCriteriaWeights);
+                console.log('Criteria Matrix:', criteriaMatrix);
+
+                // Tampilkan matriks pairwise
+                displayPairwiseMatrix(criteriaMatrix, 'criteria-pairwise-matrix', criteria);
+
+                if (data.length === 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal memuat data dari basis data.',
+                        text: 'Data kosong atau format tidak sesuai.',
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal memuat data.',
+                    text: 'Terjadi kesalahan saat mengambil data dari server.',
+                });
+            });
+    }
+
+    // Fungsi untuk memuat sub-kriteria
+    function loadSubKriteria() {
+        fetch('http://127.0.0.1:5000/sub-kriteria')
+            .then(response => response.json())
+            .then(data => {
+                subCriteria = {};
+                subCriteriaWeights = {};
+                console.log('Sub-Kriteria data:', data);
+
+                console.log('Raw Sub-Criteria Data:', data);
+
+                data.forEach(row => {
+                    if (!subCriteria[row.kriteria]) {
+                        subCriteria[row.kriteria] = [];
+                        subCriteriaWeights[row.kriteria] = [];
+                    }
+                    subCriteria[row.kriteria].push(row.sub_kriteria);
+                    subCriteriaWeights[row.kriteria].push(parseFloat(row.bobot));
+                });
+
+                // Remove duplicates
+                for (let key in subCriteria) {
+                    subCriteria[key] = subCriteria[key].filter((v, i, a) => a.indexOf(v) === i);
+                    const tbody = document.querySelector('#sub-criteria-weights-table tbody');
+                    if (tbody) {
+                        subCriteria[key].forEach((subCriterion, index) => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${key}</td><td>${subCriterion}</td><td>${subCriteriaWeights[key][index]}</td>`;
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        console.error(`tbody element for sub-criteria-weights-table not found.`);
+                    }
+
+                    // Normalisasi bobot sub-kriteria
+                    subCriteriaWeights[key] = normalizeWeights(subCriteriaWeights[key]);
+                    
+                    // Buat matriks pairwise
+                    const subCriteriaMatrix = createPairwiseMatrix(subCriteria[key], subCriteriaWeights[key]);
+                    console.log(`Sub-Criteria Matrix for ${key}:`, subCriteriaMatrix);
+
+                    // Tampilkan matriks pairwise
+                    displayPairwiseMatrix(subCriteriaMatrix, `sub-criteria-pairwise-matrix-${key.replace(/ /g, '-')}`, subCriteria[key]);
+                }
+
+                if (Object.keys(subCriteria).length === 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal memuat data dari basis data.',
+                        text: 'Data kosong atau format tidak sesuai.',
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal memuat data.',
+                    text: 'Terjadi kesalahan saat mengambil data dari server.',
+                });
+            });
+    }
+
+    // Fungsi untuk menghitung total weight
+    function calculateTotalWeight(location) {
+        let totalWeight = 0;
+
+        console.log('Criteria:', criteria);
+        console.log('Sub-Criteria:', subCriteria);
+        console.log('Sub-Criteria Weights:', subCriteriaWeights);
+        console.log('Criteria Weights:', criteriaWeights);
 
         criteria.forEach((criterion, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${criterion}</td><td>${criteriaWeights[index]}</td>`;
-            criteriaWeightsTableBody.appendChild(row);
+            const subCriteriaList = subCriteria[criterion] || [];
+            const subCriteriaWeightsList = subCriteriaWeights[criterion] || [];
+            const criteriaWeight = criteriaWeights[index] || 0;
+
+            console.log(`Processing criterion: ${criterion}`);
+            console.log(`Criteria weight: ${criteriaWeight}`);
+            
+            subCriteriaList.forEach((subCriterion, idx) => {
+                const key = subCriterion.toLowerCase().replace(/ /g, '-');
+                const value = parseInt(location[key], 10);
+
+                console.log(`Sub-criterion: ${subCriterion}`);
+                console.log(`Key: ${key}, Value: ${value}, Sub-criteria weight: ${subCriteriaWeightsList[idx]}`);
+
+                if (!isNaN(value)) {
+                    totalWeight += value * subCriteriaWeightsList[idx] * criteriaWeight;
+                } else {
+                    console.error(`Invalid value for '${subCriterion}'. Key: '${key}', Value: ${value}`);
+                }
+            });
         });
 
-        const normalizedCriteriaWeights = normalizeWeights(criteriaWeights);
-        criteriaWeights = normalizedCriteriaWeights;
+        // Format total weight to two decimal places
+        const formattedTotalWeight = (totalWeight / 10).toFixed(4);
 
-        const criteriaMatrix = createPairwiseMatrix(criteria, criteriaWeights);
-        displayPairwiseMatrix(criteriaMatrix, 'criteria-pairwise-matrix', criteria);
-        if (data.length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal memuat data CSV untuk bobot kriteria.',
-                text: 'File CSV kosong atau format tidak sesuai.',
-            });
-        }
-    });
+        console.log(`Total Weight: ${formattedTotalWeight}`);
+        return parseFloat(formattedTotalWeight);
+    }
 
-    readCSV('csv/sub_criteria_weights.csv', function(data) {
-        data.forEach(row => {
-            if (!subCriteria[row.Kriteria]) {
-                subCriteria[row.Kriteria] = [];
-                subCriteriaWeights[row.Kriteria] = [];
-            }
-            subCriteria[row.Kriteria].push(row['Sub-Kriteria']);
-            subCriteriaWeights[row.Kriteria].push(parseFloat(row.Bobot));
-        });
 
-        for (let key in subCriteria) {
-            subCriteria[key] = subCriteria[key].filter((v, i, a) => a.indexOf(v) === i);
-            const tbody = document.querySelector('#sub-criteria-weights-table tbody');
-            if (tbody) {
-                subCriteria[key].forEach((subCriterion, index) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${key}</td><td>${subCriterion}</td><td>${subCriteriaWeights[key][index]}</td>`;
-                    tbody.appendChild(row);
-                });
-            } else {
-                console.error(`tbody element for sub-criteria-weights-table not found.`);
-            }
-
-            subCriteriaWeights[key] = normalizeWeights(subCriteriaWeights[key]);
-            const subCriteriaMatrix = createPairwiseMatrix(subCriteria[key], subCriteriaWeights[key]);
-            displayPairwiseMatrix(subCriteriaMatrix, `sub-criteria-pairwise-matrix-${key.replace(/ /g, '-')}`, subCriteria[key]);
-        }
-        if (Object.keys(subCriteria).length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal memuat data CSV untuk bobot sub-kriteria.',
-                text: 'File CSV kosong atau format tidak sesuai.',
-            });
-        }
-    });
+    // Panggil fungsi loadKriteria dan loadSubKriteria saat halaman dimuat
+    loadKriteria();
+    loadSubKriteria();
+    
     const inputCsv = document.getElementById('input-csv');
     inputCsv.addEventListener('change', handleFileSelect);
     
@@ -203,18 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
     
-                // Update locations array with unique data
                 locations = uniqueLocations;
-    
-                // Calculate total weights
+
                 const totalWeights = locations.map(calculateTotalWeight);
                 const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-    
-                // Display results and chart
                 displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
                 displayChart(totalWeights, bestIndex);
-    
-                // Populate data table
                 populateDataTable(locations, totalWeights);
             },
             error: function(error) {
@@ -228,11 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    function saveCSV(event) {
-        event.preventDefault(); // Prevent default form behavior if applicable
-    
+    function saveCSV() {
         if (!currentCSVFile) {
-            console.error('No CSV file selected.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Tidak ada CSV',
+                text: 'Belum ada CSV yang di-inputkan.'
+            });
             return;
         }
     
@@ -323,6 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         const newLocation = {
             id: getLastId(locations) + 1, // Assign new ID based on last ID
+            'nama': document.getElementById('new-nama').value,
             'transportasi-umum': parseInt(document.getElementById('new-transportasi-umum').value),
             'kemudahan-akses-jalan': parseInt(document.getElementById('new-kemudahan-akses-jalan').value),
             'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('new-kedekatan-dengan-pusat-kota').value),
@@ -345,14 +417,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     
         locations.push(newLocation);
-    
-        const totalWeights = locations.map(calculateTotalWeight);
-        const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-        
-        displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
-        displayChart(totalWeights, bestIndex);
-        populateDataTable(locations, totalWeights);
-    
+        // Hitung total weight untuk lokasi baru
+        const totalWeight = calculateTotalWeight(newLocation);
+
+        // Tambahkan data ke DataTable
+        dataTable1.row.add([
+            newLocation.id,
+            newLocation.nama,
+            newLocation['transportasi-umum'],
+            newLocation['kemudahan-akses-jalan'],
+            newLocation['kedekatan-dengan-pusat-kota'],
+            newLocation['biaya-tanah'],
+            newLocation['biaya-operasional'],
+            newLocation['biaya-perawatan'],
+            newLocation['keamanan'],
+            newLocation['kebersihan'],
+            newLocation['kenyamanan'],
+            totalWeight.toFixed(4),
+            `<button class="btn btn-info btn-sm" onclick="openDetailModal(${newLocation.id})">Detail</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteLocation(${newLocation.id})">Delete</button>`
+        ]).draw(false);
+
         Swal.fire({
             icon: 'success',
             title: 'Lokasi baru berhasil ditambahkan!',
@@ -360,8 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timer: 1500
         });
     });
-    
-    
+
     const addLocationForm = document.getElementById('add-location-form');
 
     addLocationForm.addEventListener('submit', function(event) {
@@ -404,29 +488,76 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    function calculateTotalWeight(location) {
-        let totalWeight = 0;
-
-        criteria.forEach((criterion, index) => {
-            const subCriteriaList = subCriteria[criterion];
-            const subCriteriaWeightsList = subCriteriaWeights[criterion];
-            const criteriaWeight = criteriaWeights[index];
-
-            subCriteriaList.forEach((subCriterion, idx) => {
-                const key = subCriterion.toLowerCase().replace(/ /g, '-');
-                const value = parseInt(location[key]);
-
-                if (!isNaN(value)) {
-                    totalWeight += value * subCriteriaWeightsList[idx] * criteriaWeight;
-                } else {
-                    console.error(`Invalid value for '${subCriterion}'.`);
-                }
+    // Fungsi untuk menyimpan data lokasi ke server
+    function saveLocation(location) {
+        fetch('http://127.0.0.1:5000/save-location', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(location),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Response:', data);
+            Swal.fire({
+                icon: 'success',
+                title: 'Data berhasil disimpan',
+                text: 'Data lokasi telah disimpan ke database.',
+            }).then(() => {
+                // Reload halaman setelah menutup notifikasi
+                window.location.reload();
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal menyimpan data',
+                text: 'Terjadi kesalahan saat menyimpan data ke server.',
             });
         });
-
-        return totalWeight;
     }
 
+    // Fungsi untuk menyimpan semua data dari DataTable ke database tanpa ID
+    function saveAllLocations() {
+        // Ambil semua data dari DataTable
+        const tableData = dataTable1.rows().data().toArray();
+
+        // Loop melalui setiap baris data
+        tableData.forEach(row => {
+            // Buat objek lokasi dari data tabel, tanpa menyertakan ID
+            const locationData = {
+                nama: row[1],
+                transportasi_umum: parseInt(row[2]),
+                kemudahan_akses_jalan: parseInt(row[3]),
+                kedekatan_pusat_kota: parseInt(row[4]),
+                biaya_tanah: parseInt(row[5]),
+                biaya_operasional: parseInt(row[6]),
+                biaya_perawatan: parseInt(row[7]),
+                keamanan: parseInt(row[8]),
+                kebersihan: parseInt(row[9]),
+                kenyamanan: parseInt(row[10]),
+                total_weight: parseFloat(row[11])
+            };
+
+            // Panggil fungsi untuk menyimpan lokasi ke server/database
+            saveLocation(locationData);
+        });
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Semua data lokasi berhasil disimpan!',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+
+    // Tambahkan event listener untuk tombol simpan semua lokasi
+    document.getElementById('saveLocationButton').addEventListener('click', saveAllLocations);
+
+
+    // Fungsi untuk menampilkan hasil dan menampilkan tombol simpan lokasi
     function displayResults(location, totalWeight, locationIndex) {
         let resultsHtml = `<h3>Hasil Analisis Lokasi Terbaik</h3><p>Lokasi Terbaik: Lokasi ${location.id}</p><ul>`;
 
@@ -436,16 +567,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultsHtml += `</ul><p>Total Weight: ${totalWeight.toFixed(4)}</p>`;
         resultsOutput.innerHTML = resultsHtml;
+
+        // Simpan data lokasi dan total weight untuk digunakan saat tombol diklik
+        currentLocation = location;
+        currentTotalWeight = totalWeight;
+
+        // Tampilkan tombol simpan lokasi
+        document.getElementById('saveLocationButton').style.display = 'inline-block';
     }
 
-    function displayChart(weights, bestIndex) {
+    function displayChart(locations, weights, bestIndex) {
         if (chartInstance) {
             chartInstance.destroy();
         }
-
+    
         const backgroundColors = weights.map((weight, index) => index === bestIndex ? 'rgba(75, 192, 192, 0.2)' : 'rgba(255, 99, 132, 0.2)');
         const borderColors = weights.map((weight, index) => index === bestIndex ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)');
-
+    
         chartInstance = new Chart(locationChartCtx, {
             type: 'bar',
             data: {
@@ -467,8 +605,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+    
     // Initialize DataTable
+    const dataTable1 = $('#locationsTable1').DataTable({
+        "paging": true,
+        "searching": true,
+        "ordering": true,
+        "info": true,
+        "data": [],
+        "columns": [
+            { "title": "ID" },
+            { "title": "Nama" },
+            { "title": "Transportasi Umum" },
+            { "title": "Kemudahan Akses Jalan" },
+            { "title": "Kedekatan Pusat Kota" },
+            { "title": "Biaya Tanah" },
+            { "title": "Biaya Opera-<br>sional" },
+            { "title": "Biaya Perawatan" },
+            { "title": "Kea-<br>manan" },
+            { "title": "Keber-<br>sihan" },
+            { "title": "Kenya-<br>manan" },
+            { "title": "Total<br>Bobot" },
+            { "title": "Aksi" }
+        ]
+    });
     const dataTable = $('#locationsTable').DataTable({
         "paging": true,
         "searching": true,
@@ -492,33 +652,52 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
-    // Function to populate DataTable
-    function populateDataTable(locations, weights) {
+    function populateDataTable(locations, weights = []) {
         dataTable.clear();
         locations.forEach((location, index) => {
             const row = [
-                location['id'],
-                `Lokasi ${location.id}`, // Displaying the location ID
-                location['transportasi-umum'],
-                location['kemudahan-akses-jalan'],
-                location['kedekatan-dengan-pusat-kota'],
-                location['biaya-tanah'],
-                location['biaya-operasional'],
-                location['biaya-perawatan'],
-                location['keamanan'],
-                location['kebersihan'],
-                location['kenyamanan'],
-                weights[index].toFixed(4),
+                location['id'] || '',
+                location['nama'] || '',
+                location['transportasi-umum'] || '',
+                location['kemudahan-akses-jalan'] || '',
+                location['kedekatan-dengan-pusat-kota'] || '',
+                location['biaya-tanah'] || '',
+                location['biaya-operasional'] || '',
+                location['biaya-perawatan'] || '',
+                location['keamanan'] || '',
+                location['kebersihan'] || '',
+                location['kenyamanan'] || '',
+                (weights[index] || 0).toFixed(4), // Use calculated weight if available
                 `<button class="btn btn-info btn-sm" onclick="openDetailModal(${location.id})">Detail</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteLocation(${location.id})">Delete</button>`
             ];
             dataTable.row.add(row).draw(false);
         });
     }
+    
 
-    // Initialize with empty data
     populateDataTable([], []);
 
+    // Fungsi untuk mengambil lokasi dan menghitung bobotnya
+    function fetchLocations() {
+        fetch('http://127.0.0.1:5000/locations')
+            .then(response => response.json())
+            .then(locations => {
+                const weights = locations.map(location => location['total-weight']); // Gunakan bobot langsung dari database
+                const bestIndex = weights.indexOf(Math.max(...weights));
+                
+                // Populasikan DataTable dengan data lokasi dan bobot yang dihitung
+                populateDataTable(locations, weights);
+        
+                displayResults(locations[bestIndex], weights[bestIndex], bestIndex + 1);
+                displayChart(locations, weights, bestIndex);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    
+    // Panggil fetchLocations untuk memulai proses
+    fetchLocations();
+    
     // Function to open update modal
     window.openUpdateModal = function(locationId) {
         $('#detailModal').modal('hide');
@@ -536,7 +715,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('update-kebersihan').value = location['kebersihan'];
             document.getElementById('update-kenyamanan').value = location['kenyamanan'];
 
-            // Open modal
             updateLocationModal.show();
 
             // Set up save function for when modal is closed
@@ -568,17 +746,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     location['kebersihan'] = updatedValues['kebersihan'];
                     location['kenyamanan'] = updatedValues['kenyamanan'];
 
-                    // Close modal
                     updateLocationModal.hide();
 
-                    // Update table and chart
                     const totalWeights = locations.map(calculateTotalWeight);
                     const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
                     displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
                     displayChart(totalWeights, bestIndex);
                     populateDataTable(locations, totalWeights);
 
-                    // Show success alert
                     Swal.fire({
                         icon: 'success',
                         title: 'Lokasi berhasil diperbarui!',
@@ -612,7 +787,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return { valid: true };
     }
 
-    // Function to open detail modal
     window.openDetailModal = function(locationId) {
         const location = locations.find(loc => loc.id === locationId);
         if (location) {
@@ -623,7 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Create table rows for location details
                 const fields = [
                     { label: 'ID', value: location.id },
-                    { label: 'Nama', value: `Lokasi ${location.id}` },
+                    { label: 'Nama Lokasi', value: `${location.nama}` },
                     { label: 'Transportasi Umum', value: location['transportasi-umum'] },
                     { label: 'Akses Jalan', value: location['kemudahan-akses-jalan'] },
                     { label: 'Kedekatan Pusat Kota', value: location['kedekatan-dengan-pusat-kota'] },
@@ -642,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     modalBody.appendChild(row);
                 });
 
-                // Set up "Update" button in the modal
                 const updateButton = document.getElementById('updateLocationButton');
                 updateButton.onclick = function() {
                     updateLocationModal.show();
@@ -706,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.getElementById('saveCsvBtn2').addEventListener('click', saveCsv2);
-
     function saveCsv2() {
         if (locations.length === 0) {
             Swal.fire({

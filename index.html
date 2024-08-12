@@ -37,6 +37,7 @@
         </div>
 
         <form id="new-location-form">
+            <input type="text" id="new-nama" placeholder="Nama Lokasi">
             <div class="row">
                 <div class="col-md-4">
                     <input type="number" id="new-transportasi-umum" placeholder="Transportasi Umum" min="1" max="9" required>
@@ -56,6 +57,12 @@
             </div>
             <button type="submit" class="btn btn-success">Tambahkan Lokasi Baru</button><br><br>
         </form>
+
+        <table id="locationsTable1" class="display compact" style="width:100%">
+            <tbody></tbody>
+        </table>
+        <button type="button" id="saveLocationButton" class="btn btn-primary">Simpan ke Database</button>
+        <br><br>
         
         <div id="results-container">
             <div id="results-output"></div>
@@ -69,7 +76,7 @@
 
         <button type="button" id="saveCsvBtn2" class="btn btn-primary">Simpan CSV</button>
         <button type="button" id="saveCsvBtn" class="btn btn-danger">Simpan CSV</button>
-
+<br><br><br>
         <div>
             <h2>Kriteria dan Bobotnya</h2>
             <table id="criteria-weights-table">
