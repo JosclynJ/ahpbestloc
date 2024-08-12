@@ -446,48 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const addLocationForm = document.getElementById('add-location-form');
-
-    addLocationForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        locations = [];
-        for (let i = 0; i < 100; i++) {
-            const newLocation = {
-                id: i + 1,
-                'transportasi-umum': getRandomInt(1, 9),
-                'kemudahan-akses-jalan': getRandomInt(1, 9),
-                'kedekatan-dengan-pusat-kota': getRandomInt(1, 9),
-                'biaya-tanah': getRandomInt(1, 9),
-                'biaya-operasional': getRandomInt(1, 9),
-                'biaya-perawatan': getRandomInt(1, 9),
-                'keamanan': getRandomInt(1, 9),
-                'kebersihan': getRandomInt(1, 9),
-                'kenyamanan': getRandomInt(1, 9)
-            };
-            locations.push(newLocation);
-        }
-
-        const totalWeights = locations.map(calculateTotalWeight);
-        const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-        
-        displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
-        displayChart(totalWeights, bestIndex);
-        populateDataTable(locations, totalWeights);
-        Swal.fire({
-            icon: 'success',
-            title: 'Lokasi berhasil ditambahkan!',
-            showConfirmButton: false,
-            timer: 1500
-        });
-    });
-
-    function getRandomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
     // Fungsi untuk menyimpan data lokasi ke server
     function saveLocation(location) {
         fetch('http://127.0.0.1:5000/save-location', {
@@ -697,86 +655,176 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Panggil fetchLocations untuk memulai proses
     fetchLocations();
+
+    window.openDetailModal = async function(locationId) {
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/locations/${locationId}`);
+            if (!response.ok) throw new Error('Network response was not ok');
     
-    // Function to open update modal
-    window.openUpdateModal = function(locationId) {
-        $('#detailModal').modal('hide');
-        const location = locations.find(loc => loc.id === locationId);
-        if (location) {
-            // Fill modal with location data
-            document.getElementById('updateModalLabel').innerText = `Update Location ${location.id}`;
-            document.getElementById('update-transportasi-umum').value = location['transportasi-umum'];
-            document.getElementById('update-kemudahan-akses-jalan').value = location['kemudahan-akses-jalan'];
-            document.getElementById('update-kedekatan-dengan-pusat-kota').value = location['kedekatan-dengan-pusat-kota'];
-            document.getElementById('update-biaya-tanah').value = location['biaya-tanah'];
-            document.getElementById('update-biaya-operasional').value = location['biaya-operasional'];
-            document.getElementById('update-biaya-perawatan').value = location['biaya-perawatan'];
-            document.getElementById('update-keamanan').value = location['keamanan'];
-            document.getElementById('update-kebersihan').value = location['kebersihan'];
-            document.getElementById('update-kenyamanan').value = location['kenyamanan'];
-
-            updateLocationModal.show();
-
-            // Set up save function for when modal is closed
-            updateLocationModal._element.querySelector('form').onsubmit = function(event) {
-                event.preventDefault();
-                const updatedValues = {
-                    'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
-                    'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
-                    'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
-                    'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
-                    'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
-                    'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
-                    'keamanan': parseInt(document.getElementById('update-keamanan').value),
-                    'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
-                    'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value)
-                };
-
-                const { valid, errorMessage } = validateUpdatedValues(updatedValues);
-
-                if (valid) {
-                    // Update location data by ID
-                    location['transportasi-umum'] = updatedValues['transportasi-umum'];
-                    location['kemudahan-akses-jalan'] = updatedValues['kemudahan-akses-jalan'];
-                    location['kedekatan-dengan-pusat-kota'] = updatedValues['kedekatan-dengan-pusat-kota'];
-                    location['biaya-tanah'] = updatedValues['biaya-tanah'];
-                    location['biaya-operasional'] = updatedValues['biaya-operasional'];
-                    location['biaya-perawatan'] = updatedValues['biaya-perawatan'];
-                    location['keamanan'] = updatedValues['keamanan'];
-                    location['kebersihan'] = updatedValues['kebersihan'];
-                    location['kenyamanan'] = updatedValues['kenyamanan'];
-
-                    updateLocationModal.hide();
-
-                    const totalWeights = locations.map(calculateTotalWeight);
-                    const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-                    displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
-                    displayChart(totalWeights, bestIndex);
-                    populateDataTable(locations, totalWeights);
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Lokasi berhasil diperbarui!',
-                        showConfirmButton: false,
-                        timer: 1500
+            const location = await response.json();
+            if (location) {
+                const modalBody = document.getElementById('detailModalBody');
+                if (modalBody) {
+                    modalBody.innerHTML = ''; // Clear previous content
+                    
+                    // Create table rows for location details
+                    const fields = [
+                        { label: 'ID', value: location.id },
+                        { label: 'Nama Lokasi', value: location.nama },
+                        { label: 'Transportasi Umum', value: location['transportasi-umum'] },
+                        { label: 'Akses Jalan', value: location['kemudahan-akses-jalan'] },
+                        { label: 'Kedekatan Pusat Kota', value: location['kedekatan-dengan-pusat-kota'] },
+                        { label: 'Biaya Tanah', value: location['biaya-tanah'] },
+                        { label: 'Biaya Operasional', value: location['biaya-operasional'] },
+                        { label: 'Biaya Perawatan', value: location['biaya-perawatan'] },
+                        { label: 'Keamanan', value: location['keamanan'] },
+                        { label: 'Kebersihan', value: location['kebersihan'] },
+                        { label: 'Kenyamanan', value: location['kenyamanan'] },
+                        { label: 'Total', value: calculateTotalWeight(location).toFixed(4) }
+                    ];
+    
+                    fields.forEach(field => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<th>${field.label}</th><td>${field.value}</td>`;
+                        modalBody.appendChild(row);
                     });
+    
+                    const updateButton = document.getElementById('updateLocationButton');
+                    updateButton.onclick = function() {
+                        updateLocationModal.show();
+                        openUpdateModal(locationId);
+                    };
+    
+                    // Show the detail modal
+                    $('#detailModal').modal('show');
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Lokasi gagal diperbarui.',
-                        text: errorMessage,
-                    });
+                    console.error("Modal body element 'detailModalBody' not found.");
                 }
-            };
-        } else {
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lokasi tidak ditemukan',
+                    text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
+                });
+            }
+        } catch (error) {
             Swal.fire({
                 icon: 'error',
-                title: 'Lokasi tidak ditemukan',
-                text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
+                title: 'Terjadi kesalahan',
+                text: error.message,
             });
         }
     };
 
+    window.openUpdateModal = function(locationId) {
+        $('#detailModal').modal('hide');
+        // Ambil data lokasi dari server
+        fetch(`http://127.0.0.1:5000/locations/${locationId}`)
+            .then(response => response.json())
+            .then(location => {
+                if (location) {
+                    // Isi modal dengan data lokasi
+                    document.getElementById('updateModalLabel').innerText = `Update Location ${location.id}`;
+                    document.getElementById('update-transportasi-umum').value = location['transportasi-umum'];
+                    document.getElementById('update-kemudahan-akses-jalan').value = location['kemudahan-akses-jalan'];
+                    document.getElementById('update-kedekatan-dengan-pusat-kota').value = location['kedekatan-dengan-pusat-kota'];
+                    document.getElementById('update-biaya-tanah').value = location['biaya-tanah'];
+                    document.getElementById('update-biaya-operasional').value = location['biaya-operasional'];
+                    document.getElementById('update-biaya-perawatan').value = location['biaya-perawatan'];
+                    document.getElementById('update-keamanan').value = location['keamanan'];
+                    document.getElementById('update-kebersihan').value = location['kebersihan'];
+                    document.getElementById('update-kenyamanan').value = location['kenyamanan'];
+        
+                    updateLocationModal.show();
+        
+                    // Set up save function for when modal is closed
+                    updateLocationModal._element.querySelector('form').onsubmit = function(event) {
+                        event.preventDefault();
+                        const updatedValues = {
+                            'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
+                            'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
+                            'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
+                            'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
+                            'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
+                            'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
+                            'keamanan': parseInt(document.getElementById('update-keamanan').value),
+                            'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
+                            'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value),
+                            'total-weight': calculateTotalWeight({
+                                'transportasi-umum': parseInt(document.getElementById('update-transportasi-umum').value),
+                                'kemudahan-akses-jalan': parseInt(document.getElementById('update-kemudahan-akses-jalan').value),
+                                'kedekatan-dengan-pusat-kota': parseInt(document.getElementById('update-kedekatan-dengan-pusat-kota').value),
+                                'biaya-tanah': parseInt(document.getElementById('update-biaya-tanah').value),
+                                'biaya-operasional': parseInt(document.getElementById('update-biaya-operasional').value),
+                                'biaya-perawatan': parseInt(document.getElementById('update-biaya-perawatan').value),
+                                'keamanan': parseInt(document.getElementById('update-keamanan').value),
+                                'kebersihan': parseInt(document.getElementById('update-kebersihan').value),
+                                'kenyamanan': parseInt(document.getElementById('update-kenyamanan').value)
+                            }) // Hitung total weight jika diperlukan
+                        };
+    
+                        const { valid, errorMessage } = validateUpdatedValues(updatedValues);
+    
+                        if (valid) {
+                            // Update location data by ID
+                            fetch(`http://127.0.0.1:5000/locations/${locationId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updatedValues)
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Error updating location');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                updateLocationModal.hide();
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Lokasi berhasil diperbarui!',
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                }).then(() => {
+                                    // Refresh halaman setelah notifikasi sukses ditutup
+                                    window.location.reload();
+                                });
+                            })                            
+                            .catch(error => {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Lokasi gagal diperbarui.',
+                                    text: error.message,
+                                });
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Lokasi gagal diperbarui.',
+                                text: errorMessage,
+                            });
+                        }
+                    };
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lokasi tidak ditemukan',
+                        text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Terjadi kesalahan',
+                    text: error.message,
+                });
+            });
+    };
+    
+    
     function validateUpdatedValues(updatedValues) {
         const keys = ['transportasi-umum', 'kemudahan-akses-jalan', 'kedekatan-dengan-pusat-kota', 'biaya-tanah', 'biaya-operasional', 'biaya-perawatan', 'keamanan', 'kebersihan', 'kenyamanan'];
         for (const key of keys) {
@@ -786,55 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return { valid: true };
     }
-
-    window.openDetailModal = function(locationId) {
-        const location = locations.find(loc => loc.id === locationId);
-        if (location) {
-            const modalBody = document.getElementById('detailModalBody');
-            if (modalBody) {
-                modalBody.innerHTML = ''; // Clear previous content
-                
-                // Create table rows for location details
-                const fields = [
-                    { label: 'ID', value: location.id },
-                    { label: 'Nama Lokasi', value: `${location.nama}` },
-                    { label: 'Transportasi Umum', value: location['transportasi-umum'] },
-                    { label: 'Akses Jalan', value: location['kemudahan-akses-jalan'] },
-                    { label: 'Kedekatan Pusat Kota', value: location['kedekatan-dengan-pusat-kota'] },
-                    { label: 'Biaya Tanah', value: location['biaya-tanah'] },
-                    { label: 'Biaya Operasional', value: location['biaya-operasional'] },
-                    { label: 'Biaya Perawatan', value: location['biaya-perawatan'] },
-                    { label: 'Keamanan', value: location['keamanan'] },
-                    { label: 'Kebersihan', value: location['kebersihan'] },
-                    { label: 'Kenyamanan', value: location['kenyamanan'] },
-                    { label: 'Total', value: calculateTotalWeight(location).toFixed(4) }
-                ];
-
-                fields.forEach(field => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<th>${field.label}</th><td>${field.value}</td>`;
-                    modalBody.appendChild(row);
-                });
-
-                const updateButton = document.getElementById('updateLocationButton');
-                updateButton.onclick = function() {
-                    updateLocationModal.show();
-                    openUpdateModal(locationId);
-                };
-
-                // Show the detail modal
-                $('#detailModal').modal('show');
-            } else {
-                console.error("Modal body element 'detailModalBody' not found.");
-            }
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Lokasi tidak ditemukan',
-                text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
-            });
-        }
-    };
+    
 
     window.deleteLocation = function(locationId) {
         Swal.fire({
@@ -846,93 +846,101 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonColor: '#d33',
             confirmButtonText: 'Ya, hapus!',
             cancelButtonText: 'Batal'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                const initialLength = locations.length;
-
-                locations = locations.filter(location => location.id !== locationId);
-                if (locations.length === initialLength) {
+                try {
+                    const response = await fetch(`http://127.0.0.1:5000/locations/${locationId}`, {
+                        method: 'DELETE'
+                    });
+    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Terjadi kesalahan saat menghapus lokasi');
+                    }
+    
+                    const resultData = await response.json();
+    
+                    // Pastikan 'resultData' memiliki property 'success'
+                    if (resultData.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Lokasi berhasil dihapus!',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            // Refresh halaman setelah notifikasi sukses ditutup
+                            window.location.reload();
+                        });
+    
+                        // Pastikan lokasi yang dihapus ada di array
+                        if (!locations.some(location => location.id === locationId)) {
+                            console.log(`Lokasi dengan ID ${locationId} berhasil dihapus.`);
+                            // Update data
+                            locations = locations.filter(location => location.id !== locationId);
+                            const totalWeights = locations.map(calculateTotalWeight);
+                            const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
+    
+                            if (locations.length > 0) {
+                                displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
+                                displayChart(totalWeights, bestIndex);
+                                populateDataTable(locations, totalWeights);
+                            } else {
+                                // Handle case when no locations remain
+                                console.warn('Tidak ada lokasi yang tersisa untuk ditampilkan.');
+                            }
+                        } else {
+                            console.error(`Lokasi dengan ID ${locationId} tidak ditemukan dalam array locations.`);
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal menghapus lokasi.',
+                            text: resultData.message || 'Tidak ada pesan kesalahan.',
+                        });
+                    }
+                } catch (error) {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Gagal menghapus lokasi.',
-                        text: `Lokasi dengan ID ${locationId} tidak ditemukan.`,
+                        title: 'Terjadi kesalahan',
+                        text: error.message,
                     });
-                    return;
                 }
-
-                const totalWeights = locations.map(calculateTotalWeight);
-                const bestIndex = totalWeights.indexOf(Math.max(...totalWeights));
-
-                // Show success alert
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Lokasi berhasil dihapus!',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-
-                displayResults(locations[bestIndex], totalWeights[bestIndex], bestIndex + 1);
-                displayChart(totalWeights, bestIndex);
-                populateDataTable(locations, totalWeights);
             }
         });
     };
 
-    document.getElementById('saveCsvBtn2').addEventListener('click', saveCsv2);
-    function saveCsv2() {
-        if (locations.length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tidak ada data untuk disimpan',
-                text: 'Silakan tambahkan lokasi terlebih dahulu.'
+    document.getElementById('saveCsvBtn2').addEventListener('click', () => {
+        // Unduh data CSV dari server
+        fetch('http://127.0.0.1:5000/download-csv')
+            .then(response => {
+                if (response.ok) {
+                    return response.text(); // Mendapatkan data CSV sebagai teks
+                }
+                throw new Error('Network response was not ok.');
+            })
+            .then(csvData => {
+                // Kirim data CSV ke server
+                return fetch('http://127.0.0.1:5000/save-csv', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ csvData })
+                });
+            })
+            .then(response => response.text())
+            .then(result => {
+                alert(result)
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan data CSV. Silakan coba lagi.'
+                });
+                console.error('Error saving CSV:', error);
             });
-            return;
-        }
+    });
+    
 
-        const headers = [
-            'ID', 'Transportasi Umum', 'Kemudahan Akses Jalan', 'Kedekatan dengan Pusat Kota',
-            'Biaya Tanah', 'Biaya Operasional', 'Biaya Perawatan', 'Keamanan', 'Kebersihan', 'Kenyamanan', 'Total Weight'
-        ];
-
-        const rows = locations.map(location => [
-            location.id,
-            location['transportasi-umum'],
-            location['kemudahan-akses-jalan'],
-            location['kedekatan-dengan-pusat-kota'],
-            location['biaya-tanah'],
-            location['biaya-operasional'],
-            location['biaya-perawatan'],
-            location['keamanan'],
-            location['kebersihan'],
-            location['kenyamanan'],
-            calculateTotalWeight(location).toFixed(4)
-        ]);
-
-        // Use a library like PapaParse to handle CSV generation
-        const csvData = Papa.unparse([headers, ...rows], {
-            delimiter: ',',
-            newline: '\r\n'
-        });
-
-        // Send the CSV data to the server
-        fetch('http://127.0.0.1:5000/save-csv', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ csvData })
-        })
-        .then(response => response.text())
-        .then(result => {
-            alert(result)
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: 'Gagal menyimpan data CSV. Silakan coba lagi.'
-            });
-            console.error('Error saving CSV:', error);
-        });
-    }
 });
